@@ -1,5 +1,19 @@
 {
   "dependencies": {
+    "com.tencent.puerts.core": {
+      "version": "file:core",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.tencent.puerts.v8": {
+      "version": "file:v8",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.tencent.puerts.core": "3.0.2"
+      }
+    },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
       "depth": 2,
