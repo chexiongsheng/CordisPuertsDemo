@@ -1,0 +1,22 @@
+{
+  "name": "cordis-puerts-unity-bundle",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Webpack bundle of cordis core for PuerTS V8 runtime (Unity demo)",
+  "scripts": {
+    "build:cordis": "webpack --config webpack.cordis.config.js && tsc -p tsconfig.cordis.json",
+    "build:smoke": "webpack --config webpack.smoke.config.js",
+    "build": "npm run build:cordis && npm run build:smoke",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "cosmokit": "^1.8.1"
+  },
+  "devDependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.9.3",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  }
+}

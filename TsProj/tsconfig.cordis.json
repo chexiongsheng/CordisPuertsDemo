@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    // 与 cordis 官方构建（tsconfig.base.json + packages/core/tsconfig.json）对齐
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictFunctionTypes": false,
+    "skipLibCheck": true,
+    // cordis 源码在 ../../cordis_puerts/cordis 下，bare import 向上找不到
+    // 本工程的 node_modules，用 paths 显式指过来（仅影响类型解析）
+    "baseUrl": ".",
+    "paths": {
+      "cosmokit": ["./node_modules/cosmokit"],
+      "@standard-schema/spec": ["./node_modules/@standard-schema/spec"]
+    },
+    "rootDir": "../../cordis_puerts/cordis/packages/core/src",
+    "outDir": "./dist-types/cordis"
+  },
+  "include": ["../../cordis_puerts/cordis/packages/core/src"]
+}
