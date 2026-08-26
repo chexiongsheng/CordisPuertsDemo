@@ -2,3 +2,18 @@
 node_modules/
 Library/
 Packages/
+
+# Visual Studio / IDE
+.vs/
+.vsconfig
+
+# Unity 生成文件
+Logs/
+Temp/
+obj/
+ProjectSettings/
+UserSettings/
+
+# C# 工程与解决方案（Unity 自动生成）
+*.csproj
+*.sln
