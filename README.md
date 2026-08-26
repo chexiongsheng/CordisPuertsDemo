@@ -13,3 +13,7 @@ git clone --recurse-submodules git@github.com:chexiongsheng/CordisPuertsDemo.git
 ```bash
 git submodule update --init --recursive
 ```
+
+## 安装puerts
+
+用codebuddy打开本仓库，提示词输入“安装puerts”即可。
