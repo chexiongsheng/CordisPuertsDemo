@@ -1,2 +1,4 @@
 # npm 依赖（TsProj 等任意层级）
 node_modules/
+Library/
+Packages/
