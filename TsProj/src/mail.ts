@@ -1,0 +1,68 @@
+/**
+ * 邮件系统插件：5 万封邮件 + 4MB 附件缓存（中等内存）。
+ * 独立构建为 mail.cjs，由 game.cjs 统一管理开关。
+ */
+
+import * as cordis from 'cordis'
+
+const { Service } = cordis
+
+declare function setInterval(fn: () => void, ms: number): any
+declare function clearInterval(t: any): void
+
+const log = (msg: string) => console.log(msg)
+
+const MAIL_COUNT = 50_000
+const ATTACHMENT_CACHE_SIZE = 4 * 1024 * 1024 // 4MB
+
+export class MailService extends Service {
+  /** 内存哨兵：仅被本服务持有，系统 dispose 后应可被 V8 回收 */
+  readonly sentinel = { tag: 'mail-service-instance' }
+
+  /** 5 万封邮件数据 */
+  readonly mails = Array.from({ length: MAIL_COUNT }, (_, i) => ({
+    id: i,
+    from: `npc-${i % 100}`,
+    title: `mail-title-${i}`,
+    body: `mail-body-content-${i} `.repeat(4),
+    read: false,
+  }))
+
+  /** 4MB 附件缓存（逐页写入，确保物理内存真实提交） */
+  readonly attachmentCache = (() => {
+    const buf = new Uint8Array(ATTACHMENT_CACHE_SIZE)
+    for (let i = 0; i < buf.length; i += 4096) buf[i] = 1
+    return buf
+  })()
+
+  constructor(ctx: cordis.Context) {
+    super(ctx, 'mail')
+  }
+}
+
+declare module 'cordis' {
+  interface Context {
+    mail: MailService
+  }
+}
+
+export async function MailPlugin(ctx: cordis.Context) {
+  await ctx.plugin(MailService)
+  log(`[mail] 初始化完成：${MAIL_COUNT.toLocaleString()} 封邮件 + ${ATTACHMENT_CACHE_SIZE / 1024 / 1024}MB 附件缓存`)
+
+  ctx.inject(['mail'], (ctx) => {
+    // 邮件同步定时器
+    ctx.effect(function* () {
+      const timer = setInterval(() => {
+        log(`[mail] 与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`)
+      }, 3000)
+      yield () => {
+        clearInterval(timer)
+        log('[mail] 同步定时器已清理')
+      }
+    })
+    return () => log('[mail] 业务逻辑已随依赖回收')
+  })
+
+  return () => log('[mail] 插件已 dispose：服务下线 / effect 清理完毕')
+}

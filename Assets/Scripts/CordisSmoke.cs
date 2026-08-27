@@ -8,8 +8,9 @@ public class CordisSmoke : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        // enable commonjs require
         var env = new ScriptEnv(new BackendV8());
+
+        // enable commonjs require
         env.ExecuteModule("puerts/module.mjs");
         env.Eval(@"globalThis.require = puer.module.createRequire('');");
 

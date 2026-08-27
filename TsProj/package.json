@@ -6,7 +6,8 @@
   "scripts": {
     "build:cordis": "webpack --config webpack.cordis.config.js && tsc -p tsconfig.cordis.json",
     "build:smoke": "webpack --config webpack.smoke.config.js",
-    "build": "npm run build:cordis && npm run build:smoke",
+    "build:game": "webpack --config webpack.game.config.js",
+    "build": "npm run build:cordis && npm run build:smoke && npm run build:game",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

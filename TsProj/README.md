@@ -14,7 +14,7 @@ npm install
 ## 构建
 
 ```powershell
-npm run build          # 完整构建：cordis 库 + smoke demo（顺序执行下面两条）
+npm run build          # 完整构建：cordis 库 + smoke demo + game demo（顺序执行下面三条）
 ```
 
 也可以独立构建其中一部分：
@@ -27,7 +27,12 @@ npm run build:cordis   # 构建 cordis 库：
 npm run build:smoke    # 构建 smoke demo：webpack → ../Assets/Resources/smoke.cjs
                        # （require('./cordis.cjs') 被标记为外部依赖，运行时由 PuerTS 解析）
 
-npm run typecheck      # 可选：用构建产出的声明文件对 smoke.ts 做完整类型检查
+npm run build:game     # 构建 game demo（多入口）：
+                       #   game.cjs 统一入口 + shop/mail/rank.cjs 三个独立系统模块
+                       # 模块间引用（'./shop' 等）与 cordis 均标记为外部依赖，互不打包，
+                       # 运行时经 PuerTS require 按相对路径解析。对应 Assets/Scripts/CordisShopDemo.cs
+
+npm run typecheck      # 可选：用构建产出的声明文件对 src 做完整类型检查
 ```
 
 ## 产物
@@ -36,6 +41,10 @@ npm run typecheck      # 可选：用构建产出的声明文件对 smoke.ts 做
 |---|---|---|
 | cordis.cjs | `../Assets/Resources/` | cordis core 运行时（框架本体） |
 | smoke.cjs | `../Assets/Resources/` | 冒烟测试，导出 `smoke()` / `smokeTimers()` / `core` |
+| game.cjs | `../Assets/Resources/` | 统一入口，导出 `toggleSystem()` / `isSystemOpen()` / `gcReport()` / `heapStats()` / `heapUsedMB()` / `core` |
+| shop.cjs | `../Assets/Resources/` | 商城系统插件（10 万商品 + 8MB 贴图缓存） |
+| mail.cjs | `../Assets/Resources/` | 邮件系统插件（5 万邮件 + 4MB 附件缓存） |
+| rank.cjs | `../Assets/Resources/` | 排行榜系统插件（8 万条排行，纯对象） |
 | *.d.ts | `dist-types/cordis/` | cordis 类型声明，供 demo 编译期使用 |
 
 ## 构建结构
@@ -48,8 +57,9 @@ smoke.ts --import 'cordis'--> （编译期）tsconfig paths → dist-types/cordi
 
 ## Node 端冒烟（可选）
 
-改完 cordis 或 smoke 后，可先在 Node 里验证再进 Unity：
+改完 cordis 或 demo 后，可先在 Node 里验证再进 Unity：
 
 ```powershell
-node test-bundle.js
+node test-bundle.js            # smoke 链路
+node --expose-gc test-game.js  # game 链路：三系统独立开关 + 跨模块 require + GC 回收验证
 ```
