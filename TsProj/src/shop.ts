@@ -45,7 +45,8 @@ declare module 'cordis' {
   }
 }
 
-export async function ShopPlugin(ctx: cordis.Context) {
+/** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
+export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   // 1. 提供商城服务（构造时分配大块内存），await 确保服务激活后再继续
   await ctx.plugin(ShopService)
   log(`[shop] 初始化完成：${ITEM_COUNT.toLocaleString()} 件商品 + ${TEXTURE_CACHE_SIZE / 1024 / 1024}MB 贴图缓存`)

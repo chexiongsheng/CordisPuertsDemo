@@ -29,8 +29,9 @@ npm run build:smoke    # 构建 smoke demo：webpack → ../Assets/Resources/smo
 
 npm run build:game     # 构建 game demo（多入口）：
                        #   game.cjs 统一入口 + shop/mail/rank.cjs 三个独立系统模块
-                       # 模块间引用（'./shop' 等）与 cordis 均标记为外部依赖，互不打包，
-                       # 运行时经 PuerTS require 按相对路径解析。对应 Assets/Scripts/CordisShopDemo.cs
+                       # game 不静态引用系统模块：运行时经 C# 注入的 globalThis.lazyRequire
+                       # 按需加载；PuerTS 模块缓存为 WeakRef，系统关闭后模块整体可被 GC 卸载
+                       # （puer.module.statModuleCache() 可观察）。对应 Assets/Scripts/CordisDemo.cs
 
 npm run typecheck      # 可选：用构建产出的声明文件对 src 做完整类型检查
 ```
@@ -41,7 +42,7 @@ npm run typecheck      # 可选：用构建产出的声明文件对 src 做完�
 |---|---|---|
 | cordis.cjs | `../Assets/Resources/` | cordis core 运行时（框架本体） |
 | smoke.cjs | `../Assets/Resources/` | 冒烟测试，导出 `smoke()` / `smokeTimers()` / `core` |
-| game.cjs | `../Assets/Resources/` | 统一入口，导出 `toggleSystem()` / `isSystemOpen()` / `gcReport()` / `heapStats()` / `heapUsedMB()` / `core` |
+| game.cjs | `../Assets/Resources/` | 统一入口，导出 `toggleSystem()` / `isSystemOpen()` / `gcReport()` / `heapStats()` / `heapUsedMB()` / `moduleCacheStats()` / `core` |
 | shop.cjs | `../Assets/Resources/` | 商城系统插件（10 万商品 + 8MB 贴图缓存） |
 | mail.cjs | `../Assets/Resources/` | 邮件系统插件（5 万邮件 + 4MB 附件缓存） |
 | rank.cjs | `../Assets/Resources/` | 排行榜系统插件（8 万条排行，纯对象） |

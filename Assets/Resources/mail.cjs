@@ -109,8 +109,8 @@ let __webpack_exports__ = {};
   \*********************/
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   MailPlugin: () => (/* binding */ MailPlugin),
-/* harmony export */   MailService: () => (/* binding */ MailService)
+/* harmony export */   MailService: () => (/* binding */ MailService),
+/* harmony export */   plugin: () => (/* binding */ plugin)
 /* harmony export */ });
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! cordis */ "cordis");
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(cordis__WEBPACK_IMPORTED_MODULE_0__);
@@ -145,7 +145,8 @@ class MailService extends Service {
         super(ctx, 'mail');
     }
 }
-async function MailPlugin(ctx) {
+/** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
+const plugin = async (ctx) => {
     await ctx.plugin(MailService);
     log(`[mail] 初始化完成：${MAIL_COUNT.toLocaleString()} 封邮件 + ${ATTACHMENT_CACHE_SIZE / 1024 / 1024}MB 附件缓存`);
     ctx.inject(['mail'], (ctx) => {
@@ -162,7 +163,7 @@ async function MailPlugin(ctx) {
         return () => log('[mail] 业务逻辑已随依赖回收');
     });
     return () => log('[mail] 插件已 dispose：服务下线 / effect 清理完毕');
-}
+};
 
 })();
 

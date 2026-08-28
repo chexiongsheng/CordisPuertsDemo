@@ -109,8 +109,8 @@ let __webpack_exports__ = {};
   \*********************/
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   ShopPlugin: () => (/* binding */ ShopPlugin),
-/* harmony export */   ShopService: () => (/* binding */ ShopService)
+/* harmony export */   ShopService: () => (/* binding */ ShopService),
+/* harmony export */   plugin: () => (/* binding */ plugin)
 /* harmony export */ });
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! cordis */ "cordis");
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(cordis__WEBPACK_IMPORTED_MODULE_0__);
@@ -144,7 +144,8 @@ class ShopService extends Service {
         super(ctx, 'shop');
     }
 }
-async function ShopPlugin(ctx) {
+/** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
+const plugin = async (ctx) => {
     // 1. 提供商城服务（构造时分配大块内存），await 确保服务激活后再继续
     await ctx.plugin(ShopService);
     log(`[shop] 初始化完成：${ITEM_COUNT.toLocaleString()} 件商品 + ${TEXTURE_CACHE_SIZE / 1024 / 1024}MB 贴图缓存`);
@@ -167,7 +168,7 @@ async function ShopPlugin(ctx) {
     });
     // 3. dispose 回调（async plugin 的返回值会被框架收集为清理函数）
     return () => log('[shop] 插件已 dispose：服务下线 / effect 清理完毕');
-}
+};
 
 })();
 

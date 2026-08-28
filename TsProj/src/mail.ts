@@ -46,7 +46,8 @@ declare module 'cordis' {
   }
 }
 
-export async function MailPlugin(ctx: cordis.Context) {
+/** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
+export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   await ctx.plugin(MailService)
   log(`[mail] 初始化完成：${MAIL_COUNT.toLocaleString()} 封邮件 + ${ATTACHMENT_CACHE_SIZE / 1024 / 1024}MB 附件缓存`)
 

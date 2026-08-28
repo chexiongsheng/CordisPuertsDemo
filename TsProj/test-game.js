@@ -1,11 +1,17 @@
 // 在 Node 中验证 game demo 的核心命题：
 // 各系统 fiber.dispose() 之后，其服务实例（含大块内存）可被 GC 回收，
-// 且系统间互不影响。同时验证 game.cjs → shop/mail/rank.cjs 的跨模块 require 链。
+// 且系统间互不影响。同时验证 game.cjs 经 lazyRequire 动态加载系统模块的链路。
+// 注意：Node 的 require 是强缓存，"模块卸载"（statModuleCache valid?=false）
+// 是 PuerTS module.mjs 弱缓存特有的行为，仅在 Unity/PuerTS 侧可观察。
 // 运行：node --expose-gc test-game.js
 const path = require('path')
 const v8m = require('v8')
 
-const game = require(path.join(__dirname, '../Assets/Resources/game.cjs'))
+const resDir = path.join(__dirname, '../Assets/Resources')
+// 模拟 C# 侧注入的 globalThis.lazyRequire（Node 下退化为原生 require）
+globalThis.lazyRequire = (s) => require(path.join(resDir, s))
+
+const game = require(path.join(resDir, 'game.cjs'))
 
 const mb = (n) => (n / 1048576).toFixed(1)
 const heap = () => {

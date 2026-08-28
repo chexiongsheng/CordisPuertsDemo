@@ -37,7 +37,8 @@ declare module 'cordis' {
   }
 }
 
-export async function RankPlugin(ctx: cordis.Context) {
+/** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
+export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   await ctx.plugin(RankService)
   log(`[rank] 初始化完成：${RANK_COUNT.toLocaleString()} 条排行数据`)
 

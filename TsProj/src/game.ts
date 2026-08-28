@@ -9,17 +9,16 @@
  *     GC 后通过 gcReport() 观察哨兵；heapStats() 给出 V8 实时内存
  *
  * 模块结构：本文件构建为 game.cjs；三个系统各自独立构建（shop.cjs /
- * mail.cjs / rank.cjs），构建期标记为外部依赖，运行时经 PuerTS require 解析，
- * 互不打包；cordis.cjs 同理共享。
+ * mail.cjs / rank.cjs）。game 不静态 import 系统模块——每次打开系统时经
+ * C# 注入的 globalThis.lazyRequire 实时加载（PuerTS module.mjs 的模块缓存
+ * 对 exports 只持 WeakRef）；关闭系统后释放插件引用，exports 失去全部强
+ * 引用，GC 后整个系统模块（代码 + 数据）被引擎卸载，statModuleCache 可见。
  *
- * 运行方式见 Assets/Scripts/CordisShopDemo.cs（每帧 GC + 实时 heap 显示）。
+ * 运行方式见 Assets/Scripts/CordisDemo.cs（每帧 GC + 实时 heap / 模块缓存显示）。
  * Node 冒烟：node --expose-gc test-game.js
  */
 
 import * as cordis from 'cordis'
-import { ShopPlugin } from './shop'
-import { MailPlugin } from './mail'
-import { RankPlugin } from './rank'
 
 const { Context } = cordis
 
@@ -29,19 +28,19 @@ export const core = cordis
 const log = (msg: string) => console.log(msg)
 
 // ---------------------------------------------------------------------------
-// 系统开关
+// 系统开关（插件按需 lazyRequire，不做静态持有）
 // ---------------------------------------------------------------------------
 
 interface GameSystem {
-  plugin: cordis.Plugin.Function
+  plugin: cordis.Plugin.Function | null
   fiber: cordis.Fiber | null
 }
 
 // 系统名与服务名一致，哨兵可直接经 root.<name>.sentinel 取得
 const systems: Record<string, GameSystem> = {
-  shop: { plugin: ShopPlugin, fiber: null },
-  mail: { plugin: MailPlugin, fiber: null },
-  rank: { plugin: RankPlugin, fiber: null },
+  shop: { plugin: null, fiber: null },
+  mail: { plugin: null, fiber: null },
+  rank: { plugin: null, fiber: null },
 }
 
 let root: cordis.Context | undefined
@@ -52,6 +51,24 @@ async function init() {
   if (root) return
   root = new Context()
   log('[game] 游戏外壳启动（root context 常驻）')
+}
+
+/**
+ * 实时加载系统插件。经 globalThis.lazyRequire（C# 注入的 PuerTS createRequire）
+ * 而非 webpack 静态依赖：模块未缓存时才加载执行，且本模块不持久持有其 exports。
+ * lazyRequire 返回 lazy proxy，首次属性访问（取 plugin）时才真正执行模块。
+ */
+function loadPlugin(name: string): cordis.Plugin.Function {
+  const lazyRequire = (globalThis as any).lazyRequire
+  if (typeof lazyRequire !== 'function') {
+    throw new Error('globalThis.lazyRequire 未注入（见 CordisDemo.cs）')
+  }
+  const mod = lazyRequire(`./${name}.cjs`)
+  const plugin = mod.plugin
+  if (typeof plugin !== 'function') {
+    throw new Error(`${name}.cjs 未导出 plugin`)
+  }
+  return plugin
 }
 
 /** 打开/关闭指定系统，返回操作后的开关状态（C# 侧经 isSystemOpen 读取） */
@@ -66,9 +83,13 @@ export async function toggleSystem(name: string): Promise<boolean> {
     const fiber = sys.fiber
     sys.fiber = null
     await fiber.dispose()
-    log(`[game] ${name} 已关闭（服务 / 定时器全部回收）`)
+    // 释放插件引用：系统模块 exports 失去全部强引用，
+    // PuerTS 弱缓存条目在 GC 后失效（statModuleCache 中 valid?=false）
+    sys.plugin = null
+    log(`[game] ${name} 已关闭（服务 / 定时器回收，模块引用已释放）`)
     return false
   }
+  sys.plugin = loadPlugin(name)
   sys.fiber = await root!.plugin(sys.plugin)
   openSeq += 1
   sentinels.push({ label: `${name}#${openSeq}`, ref: new WeakRef((root as any)[name].sentinel) })
@@ -124,4 +145,20 @@ export function heapStats(): string {
 export function heapUsedMB(): number {
   const s = getV8HeapStatistics()
   return s ? s.used_heap_size / 1048576 : -1
+}
+
+// ---------------------------------------------------------------------------
+// PuerTS 模块缓存状态（puer.module.statModuleCache）
+// ---------------------------------------------------------------------------
+
+/**
+ * PuerTS CJS 模块缓存表格（key / weak? / valid?）。
+ * 系统关闭且 GC 后，对应 .cjs 条目的 valid? 变为 false —— 模块已被卸载，
+ * 下次打开将重新加载执行；gcModuleCache() 后该条目彻底消失。
+ */
+export function moduleCacheStats(): string {
+  const puer = (globalThis as any).puer
+  if (!puer?.module?.statModuleCache) return '（statModuleCache 不可用）'
+  puer.module.gcModuleCache()
+  return puer.module.statModuleCache()
 }
