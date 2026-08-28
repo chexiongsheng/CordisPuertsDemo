@@ -140,6 +140,11 @@ class RankService extends Service {
 const plugin = async (ctx) => {
     await ctx.plugin(RankService);
     log(`[rank] 初始化完成：${RANK_COUNT.toLocaleString()} 条排行数据`);
+    // 场景表现：右侧立方体，绕 Z 轴旋转（随 dispose 销毁）
+    const cube = CS.UnityEngine.GameObject.CreatePrimitive(CS.UnityEngine.PrimitiveType.Cube);
+    cube.name = 'RankCube';
+    cube.transform.position = new CS.UnityEngine.Vector3(4, 0, 0);
+    ctx.on('update', (dt) => cube.transform.Rotate(0, 0, 150 * dt));
     ctx.inject(['rank'], (ctx) => {
         // 名次刷新定时器
         ctx.effect(function* () {
@@ -155,7 +160,10 @@ const plugin = async (ctx) => {
         });
         return () => log('[rank] 业务逻辑已随依赖回收');
     });
-    return () => log('[rank] 插件已 dispose：服务下线 / effect 清理完毕');
+    return () => {
+        CS.UnityEngine.Object.Destroy(cube);
+        log('[rank] 插件已 dispose：服务下线 / effect 清理完毕 / 立方体销毁');
+    };
 };
 
 })();

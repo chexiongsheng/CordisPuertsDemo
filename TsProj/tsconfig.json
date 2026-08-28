@@ -13,5 +13,7 @@
       "cordis": ["./dist-types/cordis/index.d.ts"]
     }
   },
-  "include": ["src"]
+  // Unity 侧 PuerTS 生成的 C# 类声明（Tools > PuerTS > Generate index.d.ts），
+  // 提供全局 CS 命名空间的类型（目录不存在时 glob 空匹配，不影响编译）
+  "include": ["src", "../Assets/Gen/Typing/**/*.d.ts"]
 }

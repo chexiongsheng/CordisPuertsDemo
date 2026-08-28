@@ -35,12 +35,23 @@ declare module 'cordis' {
   interface Context {
     rank: RankService
   }
+
+  interface Events {
+    /** 每帧由 game 广播（C# Update → game.onUpdate(dt)），驱动各系统的场景表现 */
+    'update'(dt: number): void
+  }
 }
 
 /** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
 export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   await ctx.plugin(RankService)
   log(`[rank] 初始化完成：${RANK_COUNT.toLocaleString()} 条排行数据`)
+
+  // 场景表现：右侧立方体，绕 Z 轴旋转（随 dispose 销毁）
+  const cube = CS.UnityEngine.GameObject.CreatePrimitive(CS.UnityEngine.PrimitiveType.Cube)
+  cube.name = 'RankCube'
+  cube.transform.position = new CS.UnityEngine.Vector3(4, 0, 0)
+  ctx.on('update', (dt) => cube.transform.Rotate(0, 0, 150 * dt))
 
   ctx.inject(['rank'], (ctx) => {
     // 名次刷新定时器
@@ -58,5 +69,8 @@ export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
     return () => log('[rank] 业务逻辑已随依赖回收')
   })
 
-  return () => log('[rank] 插件已 dispose：服务下线 / effect 清理完毕')
+  return () => {
+    CS.UnityEngine.Object.Destroy(cube)
+    log('[rank] 插件已 dispose：服务下线 / effect 清理完毕 / 立方体销毁')
+  }
 }

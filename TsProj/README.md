@@ -11,6 +11,11 @@ cordis core 的 Unity PuerTS 演示工程构建目录。把 cordis core（`../..
 npm install
 ```
 
+- game demo 的场景表现（旋转立方体）用到 `CS.UnityEngine.*` 类型，需要先在
+  Unity Editor 执行 "Tools > PuerTS > Generate index.d.ts"（所需类型已在
+  `../Assets/Editor/DemoPuertsCfg.cs` 配好），生成 `../Assets/Gen/Typing/csharp/index.d.ts`
+  后 `npm run typecheck` 才会全绿（tsconfig 已 include 该目录）。
+
 ## 构建
 
 ```powershell
@@ -42,7 +47,7 @@ npm run typecheck      # 可选：用构建产出的声明文件对 src 做完�
 |---|---|---|
 | cordis.cjs | `../Assets/Resources/` | cordis core 运行时（框架本体） |
 | smoke.cjs | `../Assets/Resources/` | 冒烟测试，导出 `smoke()` / `smokeTimers()` / `core` |
-| game.cjs | `../Assets/Resources/` | 统一入口，导出 `toggleSystem()` / `isSystemOpen()` / `gcReport()` / `heapStats()` / `heapUsedMB()` / `moduleCacheStats()` / `core` |
+| game.cjs | `../Assets/Resources/` | 统一入口，导出 `toggleSystem()` / `isSystemOpen()` / `onUpdate(dt)` / `gcReport()` / `heapStats()` / `heapUsedMB()` / `moduleCacheStats()` / `core` |
 | shop.cjs | `../Assets/Resources/` | 商城系统插件（10 万商品 + 8MB 贴图缓存） |
 | mail.cjs | `../Assets/Resources/` | 邮件系统插件（5 万邮件 + 4MB 附件缓存） |
 | rank.cjs | `../Assets/Resources/` | 排行榜系统插件（8 万条排行，纯对象） |

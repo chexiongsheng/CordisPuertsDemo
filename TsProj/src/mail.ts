@@ -44,12 +44,23 @@ declare module 'cordis' {
   interface Context {
     mail: MailService
   }
+
+  interface Events {
+    /** 每帧由 game 广播（C# Update → game.onUpdate(dt)），驱动各系统的场景表现 */
+    'update'(dt: number): void
+  }
 }
 
 /** 系统插件统一导出名：game.cjs 经 lazyRequire 加载本模块后取 plugin 挂载 */
 export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   await ctx.plugin(MailService)
   log(`[mail] 初始化完成：${MAIL_COUNT.toLocaleString()} 封邮件 + ${ATTACHMENT_CACHE_SIZE / 1024 / 1024}MB 附件缓存`)
+
+  // 场景表现：中间立方体，绕 Y 轴旋转（随 dispose 销毁）
+  const cube = CS.UnityEngine.GameObject.CreatePrimitive(CS.UnityEngine.PrimitiveType.Cube)
+  cube.name = 'MailCube'
+  cube.transform.position = new CS.UnityEngine.Vector3(0, 0, 0)
+  ctx.on('update', (dt) => cube.transform.Rotate(0, 120 * dt, 0))
 
   ctx.inject(['mail'], (ctx) => {
     // 邮件同步定时器
@@ -65,5 +76,8 @@ export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
     return () => log('[mail] 业务逻辑已随依赖回收')
   })
 
-  return () => log('[mail] 插件已 dispose：服务下线 / effect 清理完毕')
+  return () => {
+    CS.UnityEngine.Object.Destroy(cube)
+    log('[mail] 插件已 dispose：服务下线 / effect 清理完毕 / 立方体销毁')
+  }
 }

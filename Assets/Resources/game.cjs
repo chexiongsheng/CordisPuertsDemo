@@ -115,6 +115,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   heapUsedMB: () => (/* binding */ heapUsedMB),
 /* harmony export */   isSystemOpen: () => (/* binding */ isSystemOpen),
 /* harmony export */   moduleCacheStats: () => (/* binding */ moduleCacheStats),
+/* harmony export */   onUpdate: () => (/* binding */ onUpdate),
 /* harmony export */   toggleSystem: () => (/* binding */ toggleSystem)
 /* harmony export */ });
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! cordis */ "cordis");
@@ -202,6 +203,16 @@ async function toggleSystem(name) {
 }
 function isSystemOpen(name) {
     return !!systems[name]?.fiber;
+}
+/**
+ * 每帧由 C# Update 驱动：向所有打开的系统广播 update 事件。
+ * 各系统插件经 ctx.on('update') 驱动场景表现（如旋转立方体），
+ * dispose 时监听器自动摘除，表现随即停止。
+ */
+function onUpdate(dt) {
+    if (!root)
+        return;
+    root.emit('update', dt);
 }
 function gcReport() {
     if (!sentinels.length)

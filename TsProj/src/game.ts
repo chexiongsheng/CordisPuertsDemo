@@ -101,6 +101,16 @@ export function isSystemOpen(name: string): boolean {
   return !!systems[name]?.fiber
 }
 
+/**
+ * 每帧由 C# Update 驱动：向所有打开的系统广播 update 事件。
+ * 各系统插件经 ctx.on('update') 驱动场景表现（如旋转立方体），
+ * dispose 时监听器自动摘除，表现随即停止。
+ */
+export function onUpdate(dt: number) {
+  if (!root) return
+  root.emit('update', dt)
+}
+
 export function gcReport(): string {
   if (!sentinels.length) return '（尚未打开过系统，无哨兵）'
   return sentinels.map((s, i) => {

@@ -149,7 +149,12 @@ const plugin = async (ctx) => {
     // 1. 提供商城服务（构造时分配大块内存），await 确保服务激活后再继续
     await ctx.plugin(ShopService);
     log(`[shop] 初始化完成：${ITEM_COUNT.toLocaleString()} 件商品 + ${TEXTURE_CACHE_SIZE / 1024 / 1024}MB 贴图缓存`);
-    // 2. 业务逻辑：cordis 要求 fiber 内访问服务必须经 inject 声明依赖（可追踪），
+    // 2. 场景表现：左侧立方体，绕 X 轴旋转（随 dispose 销毁）
+    const cube = CS.UnityEngine.GameObject.CreatePrimitive(CS.UnityEngine.PrimitiveType.Cube);
+    cube.name = 'ShopCube';
+    cube.transform.position = new CS.UnityEngine.Vector3(-4, 0, 0);
+    ctx.on('update', (dt) => cube.transform.Rotate(90 * dt, 0, 0));
+    // 3. 业务逻辑：cordis 要求 fiber 内访问服务必须经 inject 声明依赖（可追踪），
     //    依赖满足时激活；服务下线时，依赖它的逻辑会被先行停止
     ctx.inject(['shop'], (ctx) => {
         // 价格轮询定时器：effect 的 yield 清理函数在 dispose 时逆序执行
@@ -166,8 +171,11 @@ const plugin = async (ctx) => {
         });
         return () => log('[shop] 业务逻辑已随依赖回收');
     });
-    // 3. dispose 回调（async plugin 的返回值会被框架收集为清理函数）
-    return () => log('[shop] 插件已 dispose：服务下线 / effect 清理完毕');
+    // 4. dispose 回调（async plugin 的返回值会被框架收集为清理函数）
+    return () => {
+        CS.UnityEngine.Object.Destroy(cube);
+        log('[shop] 插件已 dispose：服务下线 / effect 清理完毕 / 立方体销毁');
+    };
 };
 
 })();

@@ -13,6 +13,7 @@ using Puerts;
 public class CordisDemo : MonoBehaviour
 {
     private ScriptEnv env;
+    private Action<float> jsOnUpdate; // game.onUpdate 委托缓存，避免每帧 Eval 字符串
     private string heapDisplay = "V8 heap: 读取中...";
     private string moduleStatsDisplay = "模块缓存: 读取中...";
     private bool shopOpen;
@@ -34,6 +35,7 @@ public class CordisDemo : MonoBehaviour
         env.Eval(@"globalThis.lazyRequire = puer.module.createRequire('');");
 
         env.Eval(@"globalThis.game = require('game.cjs');");
+        jsOnUpdate = env.Eval<Action<float>>(@"game.onUpdate");
         Debug.Log("[C#] PuerTS 就绪，game.cjs 已加载。点击按钮打开/关闭系统");
     }
 
@@ -42,6 +44,9 @@ public class CordisDemo : MonoBehaviour
         if (env == null) return;
         // 驱动 V8 message loop：setInterval/setTimeout 回调依赖每帧 Tick
         env.Tick();
+
+        // 广播 update 事件：各打开系统的场景表现（旋转立方体）由其插件内部驱动
+        if (jsOnUpdate != null) jsOnUpdate(Time.deltaTime);
 
         // 每帧强制 V8 GC 并刷新 heap 读数：
         // 打开系统 used 立即跳涨，关闭系统下一帧立即回落
@@ -100,7 +105,7 @@ public class CordisDemo : MonoBehaviour
             statsStyle.wordWrap = false;
         }
 
-        GUILayout.BeginArea(new Rect(10, 10, 560, 260), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 560, Screen.height - 20), GUI.skin.box);
         GUILayout.Label("cordis 游戏系统 · 插件化内存管理", titleStyle);
         GUILayout.Label(heapDisplay);
 

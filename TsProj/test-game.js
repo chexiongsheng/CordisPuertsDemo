@@ -11,6 +11,28 @@ const resDir = path.join(__dirname, '../Assets/Resources')
 // 模拟 C# 侧注入的 globalThis.lazyRequire（Node 下退化为原生 require）
 globalThis.lazyRequire = (s) => require(path.join(resDir, s))
 
+// mock Unity C# 侧 API：验证插件打开时创建立方体、dispose 时销毁（配对）
+let cubesCreated = 0
+let cubesDestroyed = 0
+globalThis.CS = {
+  UnityEngine: {
+    GameObject: {
+      CreatePrimitive: () => {
+        cubesCreated++
+        return {
+          name: '',
+          transform: { position: null, Rotate() {} },
+        }
+      },
+    },
+    PrimitiveType: { Cube: 3 },
+    Vector3: class Vector3 {
+      constructor(x, y, z) { this.x = x; this.y = y; this.z = z }
+    },
+    Object: { Destroy: () => { cubesDestroyed++ } },
+  },
+}
+
 const game = require(path.join(resDir, 'game.cjs'))
 
 const mb = (n) => (n / 1048576).toFixed(1)
@@ -54,11 +76,16 @@ async function main() {
   const report = game.gcReport()
   console.log(report)
 
+  console.log(`[scene] 立方体 created=${cubesCreated} destroyed=${cubesDestroyed}`)
+
   if (report.includes('仍存活')) {
     console.error('!!! FAIL: 存在未被回收的系统实例')
     process.exitCode = 1
+  } else if (cubesCreated !== 3 || cubesDestroyed !== 3) {
+    console.error('!!! FAIL: 立方体创建/销毁不配对（3 个系统各开关一次）')
+    process.exitCode = 1
   } else {
-    console.log('PASS: 全部系统实例已被回收')
+    console.log('PASS: 全部系统实例已被回收，立方体创建/销毁配对')
   }
 }
 
