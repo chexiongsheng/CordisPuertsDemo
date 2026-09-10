@@ -91,6 +91,21 @@ public class CordisDemo : MonoBehaviour
         catch (Exception e) { Debug.Log("[C#] toggle 异常: " + e.Message); }
     }
 
+    /// <summary>
+    /// 热重载所有已打开的系统：JS 侧执行 关闭 → 失效模块缓存 → 重新打开，
+    /// 重新加载的是磁盘上最新的 .cjs（需先 npm run build:game 构建到 Resources）。
+    /// </summary>
+    private void HotReloadOpenSystems()
+    {
+        try
+        {
+            string result = env.Eval<string>("game.hotReloadOpenSystems()");
+            Debug.Log("[C#] 热重载：" + result);
+            reportCountdown = 2;
+        }
+        catch (Exception e) { Debug.Log("[C#] 热重载异常: " + e.Message); }
+    }
+
     void OnGUI()
     {
         if (titleStyle == null)
@@ -114,6 +129,10 @@ public class CordisDemo : MonoBehaviour
         if (GUILayout.Button(mailOpen ? "关闭邮件" : "打开邮件", GUILayout.Height(40))) Toggle("mail");
         if (GUILayout.Button(rankOpen ? "关闭排行" : "打开排行", GUILayout.Height(40))) Toggle("rank");
         GUILayout.EndHorizontal();
+
+        // 自动热重载由 JS 侧 Hmr 服务轮询驱动（检测到 .cjs 变化即重载）；
+        // 此按钮为手动兜底（例如想立即重载而不等下一个轮询周期）
+        if (GUILayout.Button("手动热重载已打开的系统（自动已开启）", GUILayout.Height(30))) HotReloadOpenSystems();
 
         GUILayout.Label("PuerTS 模块缓存：");
         GUILayout.TextArea(moduleStatsDisplay, statsStyle, GUILayout.Height(90));
