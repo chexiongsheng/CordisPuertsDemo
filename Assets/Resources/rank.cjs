@@ -146,18 +146,12 @@ const plugin = async (ctx) => {
     cube.transform.position = new CS.UnityEngine.Vector3(4, 0, 0);
     ctx.on('update', (dt) => cube.transform.Rotate(0, 0, 150 * dt));
     ctx.inject(['rank'], (ctx) => {
-        // 名次刷新定时器
-        ctx.effect(function* () {
-            let tick = 0;
-            const timer = setInterval(() => {
-                const entry = ctx.rank.entries[(++tick * 7919) % RANK_COUNT];
-                log(`[rank] 名次变动：${entry.name} 现居第 ${entry.rank} 名（${entry.score} 分）`);
-            }, 2500);
-            yield () => {
-                clearInterval(timer);
-                log('[rank] 刷新定时器已清理');
-            };
-        });
+        // 名次刷新定时器：cordis timer 服务，随当前 fiber 自动清理
+        let tick = 0;
+        ctx.interval(() => {
+            const entry = ctx.rank.entries[(++tick * 7919) % RANK_COUNT];
+            log(`[rank] 名次变动：${entry.name} 现居第 ${entry.rank} 名（${entry.score} 分）`);
+        }, 2500);
         return () => log('[rank] 业务逻辑已随依赖回收');
     });
     return () => {

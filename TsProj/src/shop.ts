@@ -7,9 +7,6 @@ import * as cordis from 'cordis'
 
 const { Service } = cordis
 
-declare function setInterval(fn: () => void, ms: number): any
-declare function clearInterval(t: any): void
-
 const log = (msg: string) => console.log(msg)
 
 const ITEM_COUNT = 100_000
@@ -65,18 +62,13 @@ export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   // 3. 业务逻辑：cordis 要求 fiber 内访问服务必须经 inject 声明依赖（可追踪），
   //    依赖满足时激活；服务下线时，依赖它的逻辑会被先行停止
   ctx.inject(['shop'], (ctx) => {
-    // 价格轮询定时器：effect 的 yield 清理函数在 dispose 时逆序执行
-    ctx.effect(function* () {
-      let tick = 0
-      const timer = setInterval(() => {
-        const item = ctx.shop.items[(++tick * 7919) % ITEM_COUNT]
-        log(`[shop] 价格轮询：${item.name} 现价 ${item.price} 金币`)
-      }, 2000)
-      yield () => {
-        clearInterval(timer)
-        log('[shop] 价格轮询定时器已清理')
-      }
-    })
+    // 价格轮询定时器：cordis timer 服务，timer 随当前 fiber 自动清理
+    // （ctx.interval 内部 this.ctx 绑定调用方，无需手写 clearInterval）
+    let tick = 0
+    ctx.interval(() => {
+      const item = ctx.shop.items[(++tick * 7919) % ITEM_COUNT]
+      log(`[shop] 价格轮询：${item.name} 现价 ${item.price} 金币`)
+    }, 2000)
     return () => log('[shop] 业务逻辑已随依赖回收')
   })
 

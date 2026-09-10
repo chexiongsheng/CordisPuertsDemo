@@ -10,6 +10,16 @@
 
 module.exports = require("./cordis.cjs");
 
+/***/ },
+
+/***/ "timer"
+/*!******************************!*\
+  !*** external "./timer.cjs" ***!
+  \******************************/
+(module) {
+
+module.exports = require("./timer.cjs");
+
 /***/ }
 
 /******/ 	});
@@ -120,6 +130,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! cordis */ "cordis");
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(cordis__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var timer__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! timer */ "timer");
+/* harmony import */ var timer__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(timer__WEBPACK_IMPORTED_MODULE_1__);
 /**
  * 统一入口：管理商城 / 邮件 / 排行三个系统的开关、内存哨兵与 V8 heap 统计。
  *
@@ -135,10 +147,12 @@ __webpack_require__.r(__webpack_exports__);
  * C# 注入的 globalThis.lazyRequire 实时加载（PuerTS module.mjs 的模块缓存
  * 对 exports 只持 WeakRef）；关闭系统后释放插件引用，exports 失去全部强
  * 引用，GC 后整个系统模块（代码 + 数据）被引擎卸载，statModuleCache 可见。
+ * 例外：cordis.cjs / timer.cjs 是基础设施，静态引用、常驻不卸载。
  *
  * 运行方式见 Assets/Scripts/CordisDemo.cs（每帧 GC + 实时 heap / 模块缓存显示）。
  * Node 冒烟：node --expose-gc test-game.js
  */
+
 
 const { Context } = cordis__WEBPACK_IMPORTED_MODULE_0__;
 // 完整 cordis core 命名空间，供 C# 侧按需取用
@@ -157,7 +171,11 @@ async function init() {
     if (root)
         return;
     root = new Context();
-    log('[game] 游戏外壳启动（root context 常驻）');
+    // cordis timer 服务：基础设施级，注册在 root 上常驻。
+    // 之后各系统插件可直接用 ctx.interval / ctx.timeout，
+    // 定时器随调用方 fiber 自动清理（this.ctx 绑定调用方，见 TimerService 实现）
+    await root.plugin(timer__WEBPACK_IMPORTED_MODULE_1__.TimerService);
+    log('[game] 游戏外壳启动（root context 常驻，timer 服务已注册）');
 }
 /**
  * 实时加载系统插件。经 globalThis.lazyRequire（C# 注入的 PuerTS createRequire）

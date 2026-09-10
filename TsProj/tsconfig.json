@@ -10,10 +10,13 @@
     "baseUrl": ".",
     "paths": {
       // demo 以包名引用 cordis，类型解析到 cordis 构建产出的声明文件
-      "cordis": ["./dist-types/cordis/index.d.ts"]
+      "cordis": ["./dist-types/cordis/index.d.ts"],
+      "timer": ["./dist-types/timer/index.d.ts"]
     }
   },
   // Unity 侧 PuerTS 生成的 C# 类声明（Tools > PuerTS > Generate index.d.ts），
-  // 提供全局 CS 命名空间的类型（目录不存在时 glob 空匹配，不影响编译）
-  "include": ["src", "../Assets/Gen/Typing/**/*.d.ts"]
+  // 提供全局 CS 命名空间的类型（目录不存在时 glob 空匹配，不影响编译）；
+  // dist-types/timer 提供 ctx.interval 等的 declare module 'cordis' 增强
+  // （shop/mail/rank 不 import 'timer'，需经 include 把增强拉进编译）
+  "include": ["src", "../Assets/Gen/Typing/**/*.d.ts", "dist-types/timer/**/*.d.ts"]
 }

@@ -7,9 +7,6 @@ import * as cordis from 'cordis'
 
 const { Service } = cordis
 
-declare function setInterval(fn: () => void, ms: number): any
-declare function clearInterval(t: any): void
-
 const log = (msg: string) => console.log(msg)
 
 const MAIL_COUNT = 50_000
@@ -63,16 +60,10 @@ export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   ctx.on('update', (dt) => cube.transform.Rotate(0, 120 * dt, 0))
 
   ctx.inject(['mail'], (ctx) => {
-    // 邮件同步定时器
-    ctx.effect(function* () {
-      const timer = setInterval(() => {
-        log(`[mail] 与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`)
-      }, 3000)
-      yield () => {
-        clearInterval(timer)
-        log('[mail] 同步定时器已清理')
-      }
-    })
+    // 邮件同步定时器：cordis timer 服务，随当前 fiber 自动清理
+    ctx.interval(() => {
+      log(`[mail] 与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`)
+    }, 3000)
     return () => log('[mail] 业务逻辑已随依赖回收')
   })
 

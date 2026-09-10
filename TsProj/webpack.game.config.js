@@ -16,6 +16,7 @@ module.exports = {
   },
   externals: {
     cordis: 'commonjs ./cordis.cjs',
+    timer: 'commonjs ./timer.cjs',
   },
   output: {
     path: path.resolve(__dirname, '../Assets/Resources'),

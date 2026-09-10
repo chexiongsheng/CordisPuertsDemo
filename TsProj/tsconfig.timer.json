@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    // 与 tsconfig.cordis.json 对齐
+    "target": "ES2022",
+    // timer 源码用了 Promise.withResolvers（ES2024）；仅声明生成，不影响产物运行时目标
+    "lib": ["ES2024"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictFunctionTypes": false,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "cosmokit": ["./node_modules/cosmokit"],
+      "@standard-schema/spec": ["./node_modules/@standard-schema/spec"],
+      // timer 以包名引用 cordis，类型解析到 cordis 构建产出的声明文件
+      "cordis": ["./dist-types/cordis/index.d.ts"]
+    },
+    "rootDir": "../../cordis_puerts/cordis/packages/timer/src",
+    "outDir": "./dist-types/timer"
+  },
+  "include": ["../../cordis_puerts/cordis/packages/timer/src"]
+}
