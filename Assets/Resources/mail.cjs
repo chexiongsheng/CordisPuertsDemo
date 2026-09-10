@@ -158,7 +158,7 @@ const plugin = async (ctx) => {
     ctx.inject(['mail', 'timer'], (ctx) => {
         // 邮件同步定时器：cordis timer 服务，随当前 fiber 自动清理
         ctx.interval(() => {
-            log(`[mail] 与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`);
+            log(`[mail] 11与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`);
         }, 3000);
         return () => log('[mail] 业务逻辑已随依赖回收');
     });

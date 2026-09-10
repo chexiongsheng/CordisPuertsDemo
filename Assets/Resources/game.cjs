@@ -2,6 +2,93 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./src/hmr.ts"
+/*!********************!*\
+  !*** ./src/hmr.ts ***!
+  \********************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   HmrService: () => (/* binding */ HmrService),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! cordis */ "cordis");
+/* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(cordis__WEBPACK_IMPORTED_MODULE_0__);
+/**
+ * Hmr：热重载服务（官方 @cordisjs/plugin-hmr 的最小等价实现）。
+ *
+ * 官方 HMR 依赖 chokidar / node:fs / Node 内部 ModuleLoader，无法跑在 PuerTS 里；
+ * 这里用两个 PuerTS 自带能力替代：
+ *   - 文件变化检测：puer.loadFile 轮询文件内容（走 C# loader.ReadFile，每次真读盘），
+ *     内容变化即视为"文件被重新构建"；
+ *   - 模块失效：由消费方（game.cjs）调用 puer.module.deleteModuleCache。
+ *
+ * 本服务只负责"检测 + 广播"，具体怎么重载由订阅 hmr/change 的一方决定——
+ * 与官方语义一致（官方也是 emit hmr/change、hmr/reload）。
+ *
+ * 用法：
+ *   await root.plugin(HmrService, { targets: ['shop.cjs', 'mail.cjs'], interval: 1000 })
+ *   root.on('hmr/change', (name, file) => { ... })
+ */
+
+const { Service } = cordis__WEBPACK_IMPORTED_MODULE_0__;
+const DEFAULT_TARGETS = ['shop.cjs', 'mail.cjs', 'rank.cjs'];
+class HmrService extends Service {
+    config;
+    static inject = ['timer'];
+    /** 文件名 → 上次读到的内容 */
+    snapshots = Object.create(null);
+    constructor(ctx, config = {}) {
+        super(ctx, 'hmr');
+        this.config = config;
+    }
+    get targets() {
+        return this.config.targets ?? DEFAULT_TARGETS;
+    }
+    async *[Service.init]() {
+        // 宿主没有 puer.loadFile（如 Node 冒烟环境）时自动停用，
+        // Node 侧由 dev-hmr.js 的 fs.watch 承担检测
+        if (typeof globalThis.puer?.loadFile !== 'function') {
+            this.ctx.logger.info('[hmr] 宿主无 puer.loadFile，自动热重载未启用');
+            return;
+        }
+        for (const file of this.targets) {
+            this.snapshots[file] = this.read(file) ?? '';
+        }
+        // 轮询注册在 HmrService 自己的 fiber 上，服务卸载时自动 clear
+        this.ctx.interval(() => this.check(), this.config.interval ?? 1000);
+        this.ctx.logger.info('[hmr] 已启动：监听 %o，间隔 %dms', this.targets, this.config.interval ?? 1000);
+    }
+    read(file) {
+        try {
+            const res = globalThis.puer.loadFile(file);
+            return res?.content ?? undefined;
+        }
+        catch {
+            return undefined;
+        }
+    }
+    /** 立即检查一次，返回内容发生变化的系统名（并广播 hmr/change） */
+    check() {
+        const changed = [];
+        for (const file of this.targets) {
+            const content = this.read(file);
+            if (content === undefined || content === this.snapshots[file])
+                continue;
+            this.snapshots[file] = content;
+            const name = file.replace(/\.cjs$/, '');
+            changed.push(name);
+            this.ctx.emit('hmr/change', name, file);
+        }
+        return changed;
+    }
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (HmrService);
+
+
+/***/ },
+
 /***/ "cordis"
 /*!*******************************!*\
   !*** external "./cordis.cjs" ***!
@@ -123,6 +210,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   gcReport: () => (/* binding */ gcReport),
 /* harmony export */   heapStats: () => (/* binding */ heapStats),
 /* harmony export */   heapUsedMB: () => (/* binding */ heapUsedMB),
+/* harmony export */   hotReloadOpenSystems: () => (/* binding */ hotReloadOpenSystems),
+/* harmony export */   hotReloadSystem: () => (/* binding */ hotReloadSystem),
 /* harmony export */   isSystemOpen: () => (/* binding */ isSystemOpen),
 /* harmony export */   moduleCacheStats: () => (/* binding */ moduleCacheStats),
 /* harmony export */   onUpdate: () => (/* binding */ onUpdate),
@@ -132,6 +221,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var cordis__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(cordis__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var timer__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! timer */ "timer");
 /* harmony import */ var timer__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(timer__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony import */ var _hmr__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./hmr */ "./src/hmr.ts");
 /**
  * 统一入口：管理商城 / 邮件 / 排行三个系统的开关、内存哨兵与 V8 heap 统计。
  *
@@ -152,6 +242,7 @@ __webpack_require__.r(__webpack_exports__);
  * 运行方式见 Assets/Scripts/CordisDemo.cs（每帧 GC + 实时 heap / 模块缓存显示）。
  * Node 冒烟：node --expose-gc test-game.js
  */
+
 
 
 const { Context } = cordis__WEBPACK_IMPORTED_MODULE_0__;
@@ -189,7 +280,27 @@ async function init() {
     // 之后各系统插件可直接用 ctx.interval / ctx.timeout，
     // 定时器随调用方 fiber 自动清理（this.ctx 绑定调用方，见 TimerService 实现）
     await root.plugin(timer__WEBPACK_IMPORTED_MODULE_1__.TimerService);
-    log('[game] 游戏外壳启动（root context 常驻，timer 服务已注册）');
+    // Hmr 服务：轮询系统模块内容，变化时广播 hmr/change；
+    // 本模块订阅该事件并执行"关系统 → 失效模块缓存 → 重开"的热重载
+    await root.plugin(_hmr__WEBPACK_IMPORTED_MODULE_2__.HmrService, {
+        targets: ['shop.cjs', 'mail.cjs', 'rank.cjs'],
+        interval: 1000,
+    });
+    const reloading = new Set();
+    root.on('hmr/change', async (name) => {
+        if (reloading.has(name))
+            return;
+        reloading.add(name);
+        try {
+            log(`[game] 检测到 ${name}.cjs 变化，开始热重载`);
+            await hotReloadSystem(name);
+            root.emit('hmr/reload', name, isSystemOpen(name));
+        }
+        finally {
+            reloading.delete(name);
+        }
+    });
+    log('[game] 游戏外壳启动（root context 常驻，timer / hmr 服务已注册）');
 }
 /**
  * 实时加载系统插件。经 globalThis.lazyRequire（C# 注入的 PuerTS createRequire）
@@ -235,6 +346,58 @@ async function toggleSystem(name) {
 }
 function isSystemOpen(name) {
     return !!systems[name]?.fiber;
+}
+// ---------------------------------------------------------------------------
+// 热重载（HMR 的最小实现）
+// ---------------------------------------------------------------------------
+/**
+ * 使系统模块的缓存失效。
+ * PuerTS：puer.module.deleteModuleCache(key) 直接删缓存条目（确定性，无需等 GC），
+ * 下次 lazyRequire 会重新读取并执行磁盘上的 .cjs。
+ * Node 侧没有 puer，由宿主的 lazyRequire（dev-hmr.js）自行绕过 require 缓存。
+ */
+function invalidateModuleCache(name) {
+    const del = globalThis.puer?.module?.deleteModuleCache;
+    if (typeof del !== 'function')
+        return false;
+    // module.mjs 的 key 由 joinAsPosix(require 目录, specifier) 得到，两种写法都试
+    let cleared = false;
+    for (const key of [`${name}.cjs`, `./${name}.cjs`]) {
+        if (del(key))
+            cleared = true;
+    }
+    return cleared;
+}
+/**
+ * 热重载指定系统：关闭（dispose fiber、释放模块引用）→ 删模块缓存 → 重新打开。
+ * 效果等同于"关掉再打开"，但重新加载的是磁盘上最新的 .cjs。
+ * 前提：新的 .cjs 已构建到 Assets/Resources（Unity 工作流：改 src → npm run build:game）。
+ * 系统未打开时只失效缓存，不自动打开。
+ */
+async function hotReloadSystem(name) {
+    await init();
+    const sys = systems[name];
+    if (!sys) {
+        log(`[game] 未知系统：${name}`);
+        return false;
+    }
+    const wasOpen = !!sys.fiber;
+    if (wasOpen)
+        await toggleSystem(name); // 关闭：dispose + 释放插件引用
+    const cleared = invalidateModuleCache(name);
+    if (wasOpen)
+        await toggleSystem(name); // 重新加载最新代码
+    log(`[game] ${name} 热重载完成（模块缓存${cleared ? '已失效' : '未命中，依赖宿主缓存策略'}）`);
+    return isSystemOpen(name);
+}
+/** 热重载所有已打开的系统（供 C# 侧一键调用） */
+async function hotReloadOpenSystems() {
+    const names = Object.keys(systems).filter((name) => isSystemOpen(name));
+    if (!names.length)
+        return '（没有打开的系统）';
+    for (const name of names)
+        await hotReloadSystem(name);
+    return `已热重载：${names.join(', ')}`;
 }
 /**
  * 每帧由 C# Update 驱动：向所有打开的系统广播 update 事件。

@@ -8,6 +8,7 @@
     "build:timer": "webpack --config webpack.timer.config.js && tsc -p tsconfig.timer.json",
     "build:smoke": "webpack --config webpack.smoke.config.js",
     "build:game": "webpack --config webpack.game.config.js",
+    "watch:game": "webpack --watch --config webpack.game.config.js",
     "build": "npm run build:cordis && npm run build:timer && npm run build:smoke && npm run build:game",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

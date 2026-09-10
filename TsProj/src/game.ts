@@ -21,6 +21,7 @@
 
 import * as cordis from 'cordis'
 import { TimerService } from 'timer'
+import { HmrService } from './hmr'
 
 const { Context } = cordis
 
@@ -68,7 +69,25 @@ async function init() {
   // 之后各系统插件可直接用 ctx.interval / ctx.timeout，
   // 定时器随调用方 fiber 自动清理（this.ctx 绑定调用方，见 TimerService 实现）
   await root.plugin(TimerService)
-  log('[game] 游戏外壳启动（root context 常驻，timer 服务已注册）')
+  // Hmr 服务：轮询系统模块内容，变化时广播 hmr/change；
+  // 本模块订阅该事件并执行"关系统 → 失效模块缓存 → 重开"的热重载
+  await root.plugin(HmrService, {
+    targets: ['shop.cjs', 'mail.cjs', 'rank.cjs'],
+    interval: 1000,
+  })
+  const reloading = new Set<string>()
+  root.on('hmr/change', async (name: string) => {
+    if (reloading.has(name)) return
+    reloading.add(name)
+    try {
+      log(`[game] 检测到 ${name}.cjs 变化，开始热重载`)
+      await hotReloadSystem(name)
+      root.emit('hmr/reload', name, isSystemOpen(name))
+    } finally {
+      reloading.delete(name)
+    }
+  })
+  log('[game] 游戏外壳启动（root context 常驻，timer / hmr 服务已注册）')
 }
 
 /**
@@ -117,6 +136,56 @@ export async function toggleSystem(name: string): Promise<boolean> {
 
 export function isSystemOpen(name: string): boolean {
   return !!systems[name]?.fiber
+}
+
+// ---------------------------------------------------------------------------
+// 热重载（HMR 的最小实现）
+// ---------------------------------------------------------------------------
+
+/**
+ * 使系统模块的缓存失效。
+ * PuerTS：puer.module.deleteModuleCache(key) 直接删缓存条目（确定性，无需等 GC），
+ * 下次 lazyRequire 会重新读取并执行磁盘上的 .cjs。
+ * Node 侧没有 puer，由宿主的 lazyRequire（dev-hmr.js）自行绕过 require 缓存。
+ */
+function invalidateModuleCache(name: string): boolean {
+  const del = (globalThis as any).puer?.module?.deleteModuleCache
+  if (typeof del !== 'function') return false
+  // module.mjs 的 key 由 joinAsPosix(require 目录, specifier) 得到，两种写法都试
+  let cleared = false
+  for (const key of [`${name}.cjs`, `./${name}.cjs`]) {
+    if (del(key)) cleared = true
+  }
+  return cleared
+}
+
+/**
+ * 热重载指定系统：关闭（dispose fiber、释放模块引用）→ 删模块缓存 → 重新打开。
+ * 效果等同于"关掉再打开"，但重新加载的是磁盘上最新的 .cjs。
+ * 前提：新的 .cjs 已构建到 Assets/Resources（Unity 工作流：改 src → npm run build:game）。
+ * 系统未打开时只失效缓存，不自动打开。
+ */
+export async function hotReloadSystem(name: string): Promise<boolean> {
+  await init()
+  const sys = systems[name]
+  if (!sys) {
+    log(`[game] 未知系统：${name}`)
+    return false
+  }
+  const wasOpen = !!sys.fiber
+  if (wasOpen) await toggleSystem(name) // 关闭：dispose + 释放插件引用
+  const cleared = invalidateModuleCache(name)
+  if (wasOpen) await toggleSystem(name) // 重新加载最新代码
+  log(`[game] ${name} 热重载完成（模块缓存${cleared ? '已失效' : '未命中，依赖宿主缓存策略'}）`)
+  return isSystemOpen(name)
+}
+
+/** 热重载所有已打开的系统（供 C# 侧一键调用） */
+export async function hotReloadOpenSystems(): Promise<string> {
+  const names = Object.keys(systems).filter((name) => isSystemOpen(name))
+  if (!names.length) return '（没有打开的系统）'
+  for (const name of names) await hotReloadSystem(name)
+  return `已热重载：${names.join(', ')}`
 }
 
 /**
