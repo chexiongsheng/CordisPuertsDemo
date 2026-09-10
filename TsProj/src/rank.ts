@@ -50,7 +50,8 @@ export const plugin: cordis.Plugin.Function = async (ctx: cordis.Context) => {
   cube.transform.position = new CS.UnityEngine.Vector3(4, 0, 0)
   ctx.on('update', (dt) => cube.transform.Rotate(0, 0, 150 * dt))
 
-  ctx.inject(['rank'], (ctx) => {
+  // 注意：ctx.interval 内部要访问 ctx.timer 服务，必须把 'timer' 声明进 inject
+  ctx.inject(['rank', 'timer'], (ctx) => {
     // 名次刷新定时器：cordis timer 服务，随当前 fiber 自动清理
     let tick = 0
     ctx.interval(() => {

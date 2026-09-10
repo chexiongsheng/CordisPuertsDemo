@@ -156,7 +156,10 @@ const plugin = async (ctx) => {
     ctx.on('update', (dt) => cube.transform.Rotate(90 * dt, 0, 0));
     // 3. 业务逻辑：cordis 要求 fiber 内访问服务必须经 inject 声明依赖（可追踪），
     //    依赖满足时激活；服务下线时，依赖它的逻辑会被先行停止
-    ctx.inject(['shop'], (ctx) => {
+    // 注意：ctx.interval 内部要访问 ctx.timer 服务，必须把 'timer' 声明进 inject，
+    // 否则抛 "cannot get property timer without inject"（兄弟插件的服务互相不可见，
+    // 只有 inject 声明后才会经 _checkImpl 拷入本 fiber 的 store）
+    ctx.inject(['shop', 'timer'], (ctx) => {
         // 价格轮询定时器：cordis timer 服务，timer 随当前 fiber 自动清理
         // （ctx.interval 内部 this.ctx 绑定调用方，无需手写 clearInterval）
         let tick = 0;

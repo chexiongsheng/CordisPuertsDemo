@@ -171,6 +171,20 @@ async function init() {
     if (root)
         return;
     root = new Context();
+    // cordis 框架内部错误（如 fiber 激活失败、inject 依赖缺失）走 ctx.logger.error，
+    // 但 core 的 LoggerService 默认 exporter 只写内存 buffer（控制台输出在独立的
+    // logger-console 包），不注册 exporter 错误会静默。注册一个转发到 console。
+    const consoleExporter = {
+        export: (msg) => {
+            const text = `[cordis] ${cordis__WEBPACK_IMPORTED_MODULE_0__.Logger.format(consoleExporter, msg)}`;
+            // error 走 console.error（Unity 侧桥接为 Debug.LogError），普通日志保持 console.log
+            if (msg.type === 'error')
+                console.error(text);
+            else
+                log(text);
+        },
+    };
+    root.logger.exporter(consoleExporter);
     // cordis timer 服务：基础设施级，注册在 root 上常驻。
     // 之后各系统插件可直接用 ctx.interval / ctx.timeout，
     // 定时器随调用方 fiber 自动清理（this.ctx 绑定调用方，见 TimerService 实现）

@@ -154,7 +154,8 @@ const plugin = async (ctx) => {
     cube.name = 'MailCube';
     cube.transform.position = new CS.UnityEngine.Vector3(0, 0, 0);
     ctx.on('update', (dt) => cube.transform.Rotate(0, 120 * dt, 0));
-    ctx.inject(['mail'], (ctx) => {
+    // 注意：ctx.interval 内部要访问 ctx.timer 服务，必须把 'timer' 声明进 inject
+    ctx.inject(['mail', 'timer'], (ctx) => {
         // 邮件同步定时器：cordis timer 服务，随当前 fiber 自动清理
         ctx.interval(() => {
             log(`[mail] 与服务器同步邮件状态（共 ${ctx.mail.mails.length.toLocaleString()} 封）`);
